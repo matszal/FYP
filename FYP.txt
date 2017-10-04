@@ -5,3 +5,4 @@ I will create a Git repository with all project information, so this way all ste
 4/10/17
 Preparing my machine to install Tomcat and start ramping up about servlets, HTML, session etc.
 
+Successfully installed tomcat on my local machine and enabled default settings. Gained acces to the gui manager. I followed the instructions from this linkhttps://www.digitalocean.com/community/tutorials/how-to-install-apache-tomcat-8-on-ubuntu-16-04 now I will look into encrytping my SSL connections and servlets+HTML
