@@ -1,0 +1,7 @@
+Project dairy:
+I decided to keep track of all of the steps involved in developing my final year cloud based project.
+I will create a Git repository with all project information, so this way all steps will be fully trackable
+
+4/10/17
+Preparing my machine to install Tomcat and start ramping up about servlets, HTML, session etc.
+
