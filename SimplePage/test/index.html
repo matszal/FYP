@@ -11,6 +11,12 @@
     <img src="images/icon-cloud-aws.png" alt="My test image">
 	<h2>changes will be added asap</h2>
 	
+	<option value="">Select</option>
+    {% for option in entry.myField %}
+        <option value="{{ option.value }}">{{ option.label }}</option>
+    {% endfor %}
+</select>
+	
 	<p>This site will be built using:</p>
     
 <ul> 
