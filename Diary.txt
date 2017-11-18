@@ -1,0 +1,14 @@
+########################################################################################
+#18/11/2017																			   #
+########################################################################################
+After couple of weeks ramping up and testing different technologies to create ecommerce platform I realized that I will not be able to produce it on time and decided to change my project idea to home security system. 
+
+Idea was approved by lecturers and my supervisor. (architecure diagram available on Github)
+
+So far I prepared raspberry pi for development by installing raspbian OS.
+
+At the moment I am waiting for sensors to arrive (camera, smoke, pir) and AWS Educate account application is currently under review.
+
+I will use embedded java to program application.
+
+For the demo day I am planning to have a sensor read available on cloud server. During xmas break I'm planning to focus mainly on project to get up to the speed with it. 
