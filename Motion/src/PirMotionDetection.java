@@ -3,10 +3,8 @@ import com.pi4j.io.gpio.event.GpioPinDigitalStateChangeEvent;
 import com.pi4j.io.gpio.event.GpioPinListenerDigital;
 import com.pi4j.wiringpi.GpioUtil;
 
-public class PirMotionDetection
-{
-    public void detectMotion()
-    {
+public class PirMotionDetection{
+    public void detectMotion()    {
         System.out.println("Starting Motion Sensor Test");
         System.out.println("Pir motion sensor is ready and waiting for movement...");
 
@@ -43,9 +41,5 @@ public class PirMotionDetection
             e.printStackTrace();
         }
     }
-    public static void main(String[] args)
-    {
-        PirMotionDetection pir = new PirMotionDetection();
-        pir.detectMotion();
-    }
+
 }
