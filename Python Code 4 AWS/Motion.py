@@ -3,6 +3,8 @@
 
 # all required imports
 #import boto3
+#import send_file
+from send_file import store_to_bucket
 import ssl
 import RPi.GPIO as GPIO
 import time
@@ -62,8 +64,7 @@ def onm(c, userdata, msg):
 
 # A function to detect interrupt event.
 def my_callback(channel):
-    print
-    "Event detected on pir sensor"
+    print("Event detected on pir sensor")
     take_snap()
 
 # A function to take a snapshot and save in specific folder.
@@ -71,7 +72,14 @@ def my_callback(channel):
 def take_snap():
     print("Taking snap\n")
     date_string = time.strftime("%Y-%m-%d-%H:%M:%S")
-    camera.capture('/home/pi/Desktop/Camera_test_python/pictures/image_' + date_string + '.jpg')
+    path        = '/home/pi/Desktop/Camera_test_python/pictures/'
+    date        = 'image_'+date_string
+    ext         = '.jpg'
+    full_path   = path+date+ext
+    camera.capture(full_path)
+    #camera.capture('/home/pi/Desktop/Camera_test_python/pictures/image_' + date_string + '.jpg')
+    #send a full path to be stored in s3. Threads required!!!
+    store_to_bucket(full_path, date)
     print("Picture captured and saved\n")
     c.publish('mytopic/iot', 'Picture taken.')
     c.publish('mytopic/iot2', 'Picture taken2.')
@@ -81,6 +89,7 @@ GPIO.add_event_detect(pirSensor, GPIO.RISING, callback=my_callback)
 
 
 c.connect(hostName.read(), 8883)
+sleep(2)
 
 c.loop_start()
 c.on_connect = onc
