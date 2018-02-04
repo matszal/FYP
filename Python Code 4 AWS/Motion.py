@@ -22,7 +22,7 @@ hostName = open("/home/pi/Desktop/pythonForAWS/certs/hostName.txt", "r")
 pirSensor = 37
 #smoke, temperature, relay and others coming up shortly...
 
-# setup gpio portsx
+# setup gpio ports
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(pirSensor, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
@@ -76,11 +76,10 @@ def take_snap():
     date        = 'image_'+date_string
     ext         = '.jpg'
     full_path   = path+date+ext
+
+    #Save camera picture locally and pass location to store2bucket function
     camera.capture(full_path)
-    #camera.capture('/home/pi/Desktop/Camera_test_python/pictures/image_' + date_string + '.jpg')
-    #send a full path to be stored in s3. Threads required!!!
     store_to_bucket(full_path, date)
-    print("Picture captured and saved\n")
     c.publish('mytopic/iot', 'Picture taken.')
     c.publish('mytopic/iot2', 'Picture taken2.')
 
