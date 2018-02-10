@@ -2,8 +2,7 @@
 # Home Security System
 
 # all required imports
-#import boto3
-#import send_file
+import thread
 from send_file import store_to_bucket
 import ssl
 import RPi.GPIO as GPIO
@@ -15,7 +14,6 @@ from time import sleep
 rootca = r'/home/pi/Desktop/pythonForAWS/certs/rootCA.pem'
 certificate = r'/home/pi/Desktop/pythonForAWS/certs/certificate.pem.crt'
 keyfile = r'/home/pi/Desktop/pythonForAWS/certs/private.pem.key'
-# hostName = r'/home/pi/Desktop/pythonForAWS/certs/hostName.txt'
 hostName = open("/home/pi/Desktop/pythonForAWS/certs/hostName.txt", "r")
 
 # define gpio pins (board mode)
@@ -27,10 +25,8 @@ GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(pirSensor, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 
-
 # Get camera instance
 camera = picamera.PiCamera()
-
 
 # setup AWS IoT
 Librarycheck = True
@@ -79,7 +75,13 @@ def take_snap():
 
     #Save camera picture locally and pass location to store2bucket function
     camera.capture(full_path)
-    store_to_bucket(full_path, date)
+    
+    #Create new thread
+    try:
+        thread.start_new_thread(store_to_bucket, (full_path, date,))
+    except:
+        print("Error: unable to start thread")
+#store_to_bucket(full_path, date)
     c.publish('mytopic/iot', 'Picture taken.')
     c.publish('mytopic/iot2', 'Picture taken2.')
 
@@ -117,8 +119,3 @@ finally:
     c.loop_stop()
     c.disconnect()
     print("Connection terminated")
-
-
-
-
-
