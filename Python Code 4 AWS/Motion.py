@@ -9,18 +9,15 @@ from send_file import store_to_bucket
 import ssl
 import RPi.GPIO as GPIO
 import time
+import datetime
 import picamera
 from time import sleep
 import sys
 
-#i2c bus of Pi 3
-i2c_bus = 1
-#tmp sensor address on the i2c bus
-addr = 0x48
+#delay for temperature publishing
+delay_temp = 10
 
-dev_pi = pigpio.pi()
-dev_tmp = dev_pi.i2c_open(i2c_bus, addr, 0)
-register_n = 0
+sn_number = '000001'
 
 
 # read certificates required for authentication
@@ -32,7 +29,21 @@ hostName = open("/home/pi/Desktop/pythonForAWS/certs/hostName.txt", "r")
 # define gpio pins (board mode)
 pir_sensor      = 37
 led_test        = 35
-#smoke, temperature, relay and others coming up shortly...
+#i2c bus of Pi 3
+i2c_bus = 1
+#tmp sensor address on the i2c bus
+addr = 0x48
+dev_pi = pigpio.pi()
+dev_tmp = dev_pi.i2c_open(i2c_bus, addr, 0)
+register_n = 0
+
+
+#define IoT mqtt topics
+topic_iot           = "mytopic/iot"
+topic_iot2          = "mytopic/iot2"
+topic_led           = "mytopic/iot/led"
+topic_tmp           = "mytopic/iot/temp_read"
+
 
 # setup gpio ports
 GPIO.setwarnings(False)
@@ -59,20 +70,32 @@ c.tls_set(rootca, certfile=certificate, keyfile=keyfile,
 # FUNCTIONS================================================================================================
 #Calculate temperature based on the first word and the first byte
 def tmp_reading():
-    while True:
-        t_byte = dev_pi.i2c_read_byte_data(dev_tmp, 0)
-        t_word = dev_pi.i2c_read_word_data(dev_tmp, 0)
-        l4b = ( t_word & 0b1111000000000000)>>12
-        temperature = ((t_byte<<4) | l4b) * 0.0625
-        print(' Temperature: {} C \r'. format(temperature))
-        time.sleep(10)   
+    try:
+        count = 0        
+        while True:
+            count += 1
+            t_byte = dev_pi.i2c_read_byte_data(dev_tmp, 0)
+            t_word = dev_pi.i2c_read_word_data(dev_tmp, 0)
+            l4b = ( t_word & 0b1111000000000000)>>12
+            temperature = ((t_byte<<4) | l4b) * 0.0625
+            timestamp = datetime.datetime.now()
+            print(' Temperature: {} C   Date: {} '. format(temperature, timestamp))
+            msg = '"Device": "{:s}", "Temperature": "{}", "Loop": "{}"'.format(sn_number, temperature, count)
+            msg = '{'+msg+'}'
+            c.publish(topic_tmp, msg, 1)
+            time.sleep(delay_temp) 
+              
+    except KeyboardInterrupt:
+        pass
+
 
 # on connection send a message to console
 def onc(c, userdfata, flags, rc):
     print("successfully connected to Amazon with RC ", rc)
-    c.subscribe("mytopic/iot")
-    c.subscribe("mytopic/iot2")
-    c.subscribe("mytopic/iot/led")
+    c.subscribe(topic_iot)
+    c.subscribe(topic_iot2)
+    c.subscribe(topic_led)
+    c.subscribe(topic_tmp)
 
 
 # wait for a message from aws console topic.
@@ -80,7 +103,7 @@ def onm(c, userdata, msg):
     m = msg.payload.decode()
     print(m)
     if m == 'hello':
-        c.publish('mytopic/iot', 'Hello from Python to Amazon')
+        c.publish(topic_iot, 'Hello from Python to Amazon')
     elif m == 'on':
         GPIO.output(led_test, GPIO.HIGH)
     elif m == 'off':
@@ -112,8 +135,8 @@ def take_snap():
     except:
         print("Error: unable to start thread")
 #store_to_bucket(full_path, date)
-    c.publish('mytopic/iot', 'Picture taken.')
-    c.publish('mytopic/iot2', 'Picture taken2.')
+    c.publish(topic_iot, 'Picture taken.')
+    c.publish(topic_iot2, 'Picture taken2.')
 
 # Setup interrupt service routine when pir sensor state changed detected.
 GPIO.add_event_detect(pir_sensor, GPIO.RISING, callback=my_callback)
