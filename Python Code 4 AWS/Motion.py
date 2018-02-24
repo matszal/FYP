@@ -4,10 +4,7 @@
 # all required imports
 import pigpio
 import thread
-<<<<<<< HEAD
 from threading import Thread
-=======
->>>>>>> 0ba72bce4a2933b6e5b7dbe1d07ad0826b08581b
 from send_file import store_to_bucket
 import ssl
 import RPi.GPIO as GPIO
@@ -15,16 +12,6 @@ import time
 import picamera
 from time import sleep
 import sys
-
-#i2c bus of Pi 3
-i2c_bus = 1
-#tmp sensor address on the i2c bus
-addr = 0x48
-
-dev_pi = pigpio.pi()
-dev_tmp = dev_pi.i2c_open(i2c_bus, addr, 0)
-register_n = 0
-
 
 #i2c bus of Pi 3
 i2c_bus = 1
@@ -71,7 +58,6 @@ c.tls_set(rootca, certfile=certificate, keyfile=keyfile,
 
 # FUNCTIONS================================================================================================
 #Calculate temperature based on the first word and the first byte
-<<<<<<< HEAD
 def tmp_reading():
     while True:
         t_byte = dev_pi.i2c_read_byte_data(dev_tmp, 0)
@@ -80,12 +66,6 @@ def tmp_reading():
         temperature = ((t_byte<<4) | l4b) * 0.0625
         print(' Temperature: {} C \r'. format(temperature))
         time.sleep(10)   
-=======
-def tmp_reading(byte0, word0):
-    l4b = (word0 & 0b1111000000000000)>>12
-    temperature = ((byte0<<4) | l4b) * 0.0625
-    return temperature
->>>>>>> 0ba72bce4a2933b6e5b7dbe1d07ad0826b08581b
 
 # on connection send a message to console
 def onc(c, userdfata, flags, rc):
@@ -158,18 +138,8 @@ try:
 
         else:
             print("No movement")
-<<<<<<< HEAD
         sleep(1)
 
-=======
-
-        t_byte = dev_pi.i2c_read_byte_data(dev_tmp, 0)
-        t_word = dev_pi.i2c_read_word_data(dev_tmp, 0)
-        t = tmp_reading(t_byte, t_word)
-        print("Temperature {} C".format(t))
-        sleep(1)
-
->>>>>>> 0ba72bce4a2933b6e5b7dbe1d07ad0826b08581b
         
 
 # if CTRL-C is pressed the main loop will break.
@@ -179,11 +149,7 @@ except KeyboardInterrupt:
 
 finally:
     GPIO.remove_event_detect(pir_sensor)  # Turn off event detect interrupt
-<<<<<<< HEAD
     GPIO.cleanup()      # Reset ports
-=======
-    GPIO.cleanup()  # Reset ports
->>>>>>> 0ba72bce4a2933b6e5b7dbe1d07ad0826b08581b
     c.loop_stop()
     c.disconnect()
     r = dev_pi.i2c_close(dev_tmp)
