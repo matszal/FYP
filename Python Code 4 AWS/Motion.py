@@ -13,11 +13,15 @@ import datetime
 import picamera
 from time import sleep
 import sys
+import json
 
 #delay for temperature publishing
 delay_temp = 10
 
 sn_number = '000001'
+
+#led state
+led_status = None
 
 
 # read certificates required for authentication
@@ -80,7 +84,7 @@ def tmp_reading():
             temperature = ((t_byte<<4) | l4b) * 0.0625
             timestamp = datetime.datetime.now()
             print(' Temperature: {} C   Date: {} '. format(temperature, timestamp))
-            msg = '"Device": "{:s}", "Temperature": "{}", "Loop": "{}"'.format(sn_number, temperature, count)
+            msg = '"Date": "{}", "Device": "{:s}", "Temperature": "{}", "Loop": "{}"'.format(timestamp, sn_number, temperature, count)
             msg = '{'+msg+'}'
             c.publish(topic_tmp, msg, 1)
             time.sleep(delay_temp) 
@@ -101,6 +105,35 @@ def onc(c, userdfata, flags, rc):
 # wait for a message from aws console topic.
 def onm(c, userdata, msg):
     m = msg.payload.decode()
+    #print(m)
+
+    if is_json(m):
+        print("deal with json ")
+        j = json.loads(m)
+        temp = (j['Temperature'])
+        #temp = int(temp)
+        print(temp)
+        tempint = int(float(temp))
+        print(tempint)
+        if tempint < 20:
+            #led_status = True
+            GPIO.output(led_test, GPIO.HIGH)
+        else:
+            #led_status = False
+            GPIO.output(led_test, GPIO.LOW)
+
+        
+    else:
+        print(m)
+        if m == 'hello':
+            c.publish(topic_iot, 'Hello from Python to Amazon')
+        elif m == 'on':
+            GPIO.output(led_test, GPIO.HIGH)
+        elif m == 'off':
+            GPIO.output(led_test, GPIO.LOW)
+     
+"""
+   
     print(m)
     if m == 'hello':
         c.publish(topic_iot, 'Hello from Python to Amazon')
@@ -108,8 +141,37 @@ def onm(c, userdata, msg):
         GPIO.output(led_test, GPIO.HIGH)
     elif m == 'off':
         GPIO.output(led_test, GPIO.LOW)
+    
+    
+    try:
+        json_object = json.loads(m)
+    except ValueError, e:
+        #pass # invalid json
+        print(m)
+        if m == 'hello':
+            c.publish(topic_iot, 'Hello from Python to Amazon')
+        elif m == 'on':
+            GPIO.output(led_test, GPIO.HIGH)
+        elif m == 'off':
+            GPIO.output(led_test, GPIO.LOW)
+        else:
+            pass # valid json
+            print("start parsing here.")
+            j = json.dumps(m)
+            #obj = json.parse(json_data)
+            #temperature = j.temperature
+            print j['Temperature']
+            #temp = int(j['Temperature'])
+            #print(temp)
+    """
 
-
+#A function to detect if received message is in json format
+def is_json(my_msg):
+    try:
+        json_object = json.loads(my_msg)
+    except ValueError, e:
+        return False
+    return True
 
 # A function to detect interrupt event.
 def my_callback(channel):
@@ -135,8 +197,8 @@ def take_snap():
     except:
         print("Error: unable to start thread")
 #store_to_bucket(full_path, date)
-    c.publish(topic_iot, 'Picture taken.')
-    c.publish(topic_iot2, 'Picture taken2.')
+    #c.publish(topic_iot, 'Picture taken.')
+    #c.publish(topic_iot2, 'Picture taken2.')
 
 # Setup interrupt service routine when pir sensor state changed detected.
 GPIO.add_event_detect(pir_sensor, GPIO.RISING, callback=my_callback)
@@ -150,6 +212,7 @@ c.on_message = onm
 
 #start temperature read thread
 background_thread = Thread(target=tmp_reading, args=())
+background_thread.daemon = True
 background_thread.start()
 
 # main function
