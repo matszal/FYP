@@ -15,14 +15,10 @@ from time import sleep
 import sys
 import json
 
-#delay for temperature publishing
-delay_temp = 10
-
-sn_number = '000001'
-
-#led state
-led_status = None
-
+# delay for temperature before sending data to database + sensor ID
+delay_temp          = 1000
+sn_number           = '000001'
+led_status          = None
 
 # read certificates required for authentication
 rootca = r'/home/pi/Desktop/pythonForAWS/certs/rootCA.pem'
@@ -30,23 +26,18 @@ certificate = r'/home/pi/Desktop/pythonForAWS/certs/certificate.pem.crt'
 keyfile = r'/home/pi/Desktop/pythonForAWS/certs/private.pem.key'
 hostName = open("/home/pi/Desktop/pythonForAWS/certs/hostName.txt", "r")
 
+
 # define gpio pins (board mode)
-pir_sensor      = 37
-led_test        = 35
-#i2c bus of Pi 3
-i2c_bus = 1
-#tmp sensor address on the i2c bus
-addr = 0x48
+pir_sensor          = 37
+led_test            = 35
+# i2c bus of Pi 3
+i2c_bus             = 1
+# tmp sensor address on the i2c bus
+addr                = 0x48
 dev_pi = pigpio.pi()
 dev_tmp = dev_pi.i2c_open(i2c_bus, addr, 0)
-register_n = 0
+register_n          = 0
 
-
-#define IoT mqtt topics
-topic_iot           = "mytopic/iot"
-topic_iot2          = "mytopic/iot2"
-topic_led           = "mytopic/iot/led"
-topic_tmp           = "mytopic/iot/temp_read"
 
 
 # setup gpio ports
@@ -54,8 +45,16 @@ GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BOARD)
 GPIO.setup(pir_sensor, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 GPIO.setup(led_test, GPIO.OUT)
-# Get camera instance
-camera = picamera.PiCamera()
+# get camera instance
+camera  = picamera.PiCamera()
+
+
+# define IoT mqtt topics
+topic_iot           = "mytopic/iot"
+topic_iot2          = "mytopic/iot2"
+topic_led           = "mytopic/iot/led"
+topic_tmp           = "mytopic/iot/temp_read"
+
 
 # setup AWS IoT
 Librarycheck = True
@@ -72,7 +71,7 @@ c.tls_set(rootca, certfile=certificate, keyfile=keyfile,
           cert_reqs=ssl.CERT_REQUIRED, tls_version=ssl.PROTOCOL_TLSv1_2, ciphers=None)
 
 # FUNCTIONS================================================================================================
-#Calculate temperature based on the first word and the first byte
+# calculate temperature based on the first word and the first byte
 def tmp_reading():
     try:
         count = 0        
@@ -97,7 +96,7 @@ def tmp_reading():
 def onc(c, userdfata, flags, rc):
     print("successfully connected to Amazon with RC ", rc)
     c.subscribe(topic_iot)
-    c.subscribe(topic_iot2)
+    #c.subscribe(topic_iot2)
     c.subscribe(topic_led)
     c.subscribe(topic_tmp)
 
@@ -105,27 +104,28 @@ def onc(c, userdfata, flags, rc):
 # wait for a message from aws console topic.
 def onm(c, userdata, msg):
     m = msg.payload.decode()
-    #print(m)
+    # print(m)
 
     if is_json(m):
         print("deal with json ")
         j = json.loads(m)
         temp = (j['Temperature'])
-        #temp = int(temp)
+        # temp = int(temp)
         print(temp)
         tempint = int(float(temp))
         print(tempint)
         if tempint < 20:
-            #led_status = True
+            # led_status = True
             GPIO.output(led_test, GPIO.HIGH)
         else:
-            #led_status = False
+            # led_status = False
             GPIO.output(led_test, GPIO.LOW)
 
         
     else:
         print(m)
         if m == 'hello':
+            # change topic here
             c.publish(topic_iot, 'Hello from Python to Amazon')
         elif m == 'on':
             GPIO.output(led_test, GPIO.HIGH)
@@ -165,7 +165,7 @@ def onm(c, userdata, msg):
             #print(temp)
     """
 
-#A function to detect if received message is in json format
+# function to detect if received message is in json format
 def is_json(my_msg):
     try:
         json_object = json.loads(my_msg)
@@ -173,12 +173,13 @@ def is_json(my_msg):
         return False
     return True
 
-# A function to detect interrupt event.
+# function to detect interrupt event.
 def my_callback(channel):
     print("Event detected on pir sensor")
-    take_snap()
+    sleep(4)
+    #take_snap()
 
-# A function to take a snapshot and save in specific folder.
+# function to take a snapshot and save in specific folder.
 # date_string is used to take a picture and add current date as a name to prevent image duplication.
 def take_snap():
     print("Taking snap\n")
@@ -188,19 +189,16 @@ def take_snap():
     ext         = '.jpg'
     full_path   = path+date+ext
 
-    #Save camera picture locally and pass location to store2bucket function
+    # save camera picture locally and pass location to store2bucket function
     camera.capture(full_path)
     
-    #Create new thread
+    # create new thread
     try:
         thread.start_new_thread(store_to_bucket, (full_path, date,))
     except:
         print("Error: unable to start thread")
-#store_to_bucket(full_path, date)
-    #c.publish(topic_iot, 'Picture taken.')
-    #c.publish(topic_iot2, 'Picture taken2.')
 
-# Setup interrupt service routine when pir sensor state changed detected.
+# setup interrupt service routine when pir sensor state changed detected.
 GPIO.add_event_detect(pir_sensor, GPIO.RISING, callback=my_callback)
 
 c.connect(hostName.read(), 8883)
@@ -210,7 +208,7 @@ c.loop_start()
 c.on_connect = onc
 c.on_message = onm
 
-#start temperature read thread
+# start temperature read thread
 background_thread = Thread(target=tmp_reading, args=())
 background_thread.daemon = True
 background_thread.start()
@@ -224,19 +222,22 @@ try:
 
         else:
             print("No movement")
-        sleep(1)
-
-        
+        sleep(1)        
 
 # if CTRL-C is pressed the main loop will break.
 except KeyboardInterrupt:
     print("Exitting")
+    #GPIO.cleanup()                          # reset ports
+
 
 
 finally:
-    GPIO.remove_event_detect(pir_sensor)  # Turn off event detect interrupt
-    GPIO.cleanup()      # Reset ports
-    c.loop_stop()
+    GPIO.remove_event_detect(pir_sensor)    # turn off event detect interrupt
+    GPIO.cleanup()                          # reset ports
+    c.loop_stop()                           # start connection loop
     c.disconnect()
-    r = dev_pi.i2c_close(dev_tmp)
+    r = dev_pi.i2c_close(dev_tmp)           # close i2c devices
     print("Connection terminated")
+#GPIO.cleanup()                          # reset ports
+
+    
