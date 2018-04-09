@@ -6,6 +6,7 @@ import pigpio
 import thread
 from threading import Thread
 from send_file import store_to_bucket
+import I2C_LCD_driver
 import ssl
 import RPi.GPIO as GPIO
 import time
@@ -15,8 +16,9 @@ from time import sleep
 import sys
 import json
 
+
 # delay for temperature before sending data to database + sensor ID
-delay_temp          = 1000
+delay_temp          = 10
 sn_number           = '000001'
 led_status          = None
 
@@ -32,13 +34,14 @@ pir_sensor          = 37
 led_test            = 35
 # i2c bus of Pi 3
 i2c_bus             = 1
-# tmp sensor address on the i2c bus
-addr                = 0x48
+# address devices on the i2c bus
+tmp_sensor_addr     = 0x48
+lcd_screen          = 0x27
 dev_pi = pigpio.pi()
-dev_tmp = dev_pi.i2c_open(i2c_bus, addr, 0)
+dev_tmp = dev_pi.i2c_open(i2c_bus, tmp_sensor_addr , 0)
 register_n          = 0
-
-
+#setup lcd
+mylcd = I2C_LCD_driver.lcd()
 
 # setup gpio ports
 GPIO.setwarnings(False)
@@ -74,7 +77,7 @@ c.tls_set(rootca, certfile=certificate, keyfile=keyfile,
 # calculate temperature based on the first word and the first byte
 def tmp_reading():
     try:
-        count = 0        
+        count = 0
         while True:
             count += 1
             t_byte = dev_pi.i2c_read_byte_data(dev_tmp, 0)
@@ -83,11 +86,13 @@ def tmp_reading():
             temperature = ((t_byte<<4) | l4b) * 0.0625
             timestamp = datetime.datetime.now()
             print(' Temperature: {} C   Date: {} '. format(temperature, timestamp))
+            mylcd.lcd_clear()
+            mylcd.lcd_display_string("Temp: %d %%" % temperature, 2)
             msg = '"Date": "{}", "Device": "{:s}", "Temperature": "{}", "Loop": "{}"'.format(timestamp, sn_number, temperature, count)
             msg = '{'+msg+'}'
             c.publish(topic_tmp, msg, 1)
-            time.sleep(delay_temp) 
-              
+            time.sleep(delay_temp)
+
     except KeyboardInterrupt:
         pass
 
@@ -121,7 +126,7 @@ def onm(c, userdata, msg):
             # led_status = False
             GPIO.output(led_test, GPIO.LOW)
 
-        
+
     else:
         print(m)
         if m == 'hello':
@@ -131,9 +136,9 @@ def onm(c, userdata, msg):
             GPIO.output(led_test, GPIO.HIGH)
         elif m == 'off':
             GPIO.output(led_test, GPIO.LOW)
-     
+
 """
-   
+
     print(m)
     if m == 'hello':
         c.publish(topic_iot, 'Hello from Python to Amazon')
@@ -141,8 +146,8 @@ def onm(c, userdata, msg):
         GPIO.output(led_test, GPIO.HIGH)
     elif m == 'off':
         GPIO.output(led_test, GPIO.LOW)
-    
-    
+
+
     try:
         json_object = json.loads(m)
     except ValueError, e:
@@ -176,7 +181,7 @@ def is_json(my_msg):
 # function to detect interrupt event.
 def my_callback(channel):
     print("Event detected on pir sensor")
-    sleep(4)
+    #sleep(4)
     #take_snap()
 
 # function to take a snapshot and save in specific folder.
@@ -191,7 +196,7 @@ def take_snap():
 
     # save camera picture locally and pass location to store2bucket function
     camera.capture(full_path)
-    
+
     # create new thread
     try:
         thread.start_new_thread(store_to_bucket, (full_path, date,))
@@ -199,7 +204,7 @@ def take_snap():
         print("Error: unable to start thread")
 
 # setup interrupt service routine when pir sensor state changed detected.
-GPIO.add_event_detect(pir_sensor, GPIO.RISING, callback=my_callback)
+GPIO.add_event_detect(pir_sensor, GPIO.FALLING, callback=my_callback)
 
 c.connect(hostName.read(), 8883)
 sleep(2)
@@ -215,14 +220,14 @@ background_thread.start()
 
 # main function
 try:
-    
+
     while True:
         if GPIO.input(37) > 0.5:
             print("\rMovement dtetected, isr triggered!")
 
         else:
             print("No movement")
-        sleep(1)        
+        sleep(1)
 
 # if CTRL-C is pressed the main loop will break.
 except KeyboardInterrupt:
@@ -239,5 +244,3 @@ finally:
     r = dev_pi.i2c_close(dev_tmp)           # close i2c devices
     print("Connection terminated")
 #GPIO.cleanup()                          # reset ports
-
-    
